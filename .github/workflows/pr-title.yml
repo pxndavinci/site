@@ -10,4 +10,4 @@ jobs:
   pr-title:
     permissions:
       pull-requests: read
-    uses: joatverse/.github/.github/workflows/pr-title.yml@main
+    uses: pxndavinci/.github/.github/workflows/pr-title.yml@main
