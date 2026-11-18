@@ -193,9 +193,7 @@ section[id] {
 .portrait {
   position: relative;
   aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 2px;
-  background: var(--color-console);
+  overflow: hidden; /* transparent: the cut-out portrait sits on the page itself */
 }
 .portrait canvas,
 .portrait img {

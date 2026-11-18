@@ -47,6 +47,7 @@ function rng(seed: number) {
 // The image at RES, blurred to `LEVELS + 1` strengths, as floats in [-1, 1]
 // (the range diffusion models work in). Blur = shrink then scale back up.
 function pyramid(img: HTMLImageElement): Float32Array[] {
+  const paper = getComputedStyle(document.body).backgroundColor;
   const out: Float32Array[] = [];
   const small = document.createElement("canvas");
   const big = document.createElement("canvas");
@@ -55,7 +56,13 @@ function pyramid(img: HTMLImageElement): Float32Array[] {
   for (let l = 0; l <= LEVELS; l++) {
     const n = RES >> l;
     small.width = small.height = n;
-    small.getContext("2d")!.drawImage(img, 0, 0, n, n);
+    const sctx = small.getContext("2d")!;
+    // The portrait has a transparent background: the "model" generates the
+    // whole square, so composite it on the page colour first. The last frame
+    // then matches the page and the <img> fades in without a seam.
+    sctx.fillStyle = paper;
+    sctx.fillRect(0, 0, n, n);
+    sctx.drawImage(img, 0, 0, n, n);
     bctx.imageSmoothingQuality = "high";
     bctx.drawImage(small, 0, 0, RES, RES);
     const px = bctx.getImageData(0, 0, RES, RES).data;
@@ -164,7 +171,7 @@ export function DiffusionPortrait({ src, alt, className = "" }: { src: string; a
       <div ref={box} className="portrait">
         <canvas ref={canvas} width={RES} height={RES} aria-hidden="true" />
         {/* eslint-disable-next-line @next/next/no-img-element -- static export: no image optimiser */}
-        <img ref={img} src={src} alt={alt} width={440} height={440} decoding="async" />
+        <img ref={img} src={src} alt={alt} width={560} height={560} decoding="async" />
       </div>
       <figcaption
         aria-hidden="true"
