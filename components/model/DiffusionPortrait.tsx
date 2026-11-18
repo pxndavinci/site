@@ -19,7 +19,7 @@
 // differs every visit. The swap point for a real model: replace x̂₀ with the
 // network's prediction at each step; the drawing code stays the same.
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { bus } from "./bus";
+import { bus, REAL_TIME } from "./bus";
 
 const RES = 128; // the "model's" resolution; the canvas is scaled up by CSS
 const STEPS = 50;
@@ -139,11 +139,17 @@ export function DiffusionPortrait({ src, alt, className = "" }: { src: string; a
 
       draw(STEPS);
       el.classList.add("running");
-      const t0 = performance.now();
+      // The panel's speed slider slows the sampling too. Read every frame, so a drag
+      // mid-sample takes effect at once. (REAL_TIME/speed)^0.6: at 1 tok/s one
+      // image takes ~45 s, slow enough to watch each step, not so slow it stalls.
+      let u = 0; // 0 → 1: how far through the sampling we are
+      let prev = performance.now();
       let last = STEPS;
       const tick = (now: number) => {
         if (stopped) return;
-        const k = STEPS - stepsDone((now - t0) / DURATION_MS);
+        u += Math.max(0, now - prev) / (DURATION_MS * (REAL_TIME / bus.get().speed) ** 0.6);
+        prev = now;
+        const k = STEPS - stepsDone(u);
         if (k !== last) draw((last = k)); // only redraw when the step changes
         if (k > 0) raf = requestAnimationFrame(tick);
         else el.classList.add("done"); // the sharp <img> fades in over the 128 px canvas

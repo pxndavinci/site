@@ -39,8 +39,8 @@ export default function Home() {
           {/* Sticky, so the mini-gpt switch is always one tap away. */}
           <header className="sticky top-0 z-10 -mx-5 flex items-center justify-between bg-paper px-5 py-5 font-mono text-xs text-ink-muted sm:mx-0 sm:px-0 sm:py-7">
             <span className="hidden sm:inline">abishek.joatverse.com</span>
-            <div className="flex items-center gap-5">
-              <nav className="flex gap-4">
+            <div className="flex items-center gap-3 sm:gap-5">
+              <nav className="flex gap-2.5 sm:gap-4">
                 <a href="#about" className="hover:text-ink">
                   about
                 </a>

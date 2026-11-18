@@ -183,7 +183,7 @@ function Panel() {
 const toSpeed = (v: number) => Math.round(REAL_TIME ** (v / 100));
 const toSlider = (s: number) => Math.round((Math.log(s) / Math.log(REAL_TIME)) * 100);
 
-function SpeedSlider() {
+function SpeedSlider({ compact = false }: { compact?: boolean }) {
   const speed = useSyncExternalStore(
     bus.subscribe,
     () => bus.get().speed,
@@ -191,7 +191,13 @@ function SpeedSlider() {
   );
   const label = speed >= REAL_TIME ? "real time" : `${speed} tok/s`;
   return (
-    <label className="mt-2 flex items-center gap-3 border-t border-console-line pt-2">
+    <label
+      className={
+        compact
+          ? "flex flex-1 items-center gap-2 py-1"
+          : "mt-2 flex items-center gap-3 border-t border-console-line pt-2"
+      }
+    >
       <span>speed</span>
       <input
         type="range"
@@ -208,12 +214,13 @@ function SpeedSlider() {
         }}
         className="h-1 flex-1 cursor-pointer accent-signal"
       />
-      <span className="w-16 text-right text-console-text tabular-nums">{label}</span>
+      <span className={`${compact ? "w-14" : "w-16"} text-right text-console-text tabular-nums`}>{label}</span>
     </label>
   );
 }
 
-/** Phone and small laptop: a slim bar pinned to the bottom, only while tokens are streaming. */
+/** Phone, tablet, small laptop: a slim bar pinned to the bottom, always shown,
+ *  because the speed slider lives here below 1280 px (the card has no room). */
 export function ModelBar() {
   return useDesktop() ? null : <Bar />;
 }
@@ -222,19 +229,15 @@ function Bar() {
   const m = useModel();
   const top = m.topk[0];
   return (
-    <div
-      aria-hidden="true"
-      className={`fixed inset-x-0 bottom-0 z-10 bg-console px-4 py-2 font-mono text-[11px] text-console-muted transition-opacity duration-500 xl:hidden ${
-        m.status === "generating" ? "opacity-100" : "pointer-events-none opacity-0"
-      }`}
-    >
+    <div className="fixed inset-x-0 bottom-0 z-10 bg-console px-4 py-1.5 font-mono text-[11px] text-console-muted xl:hidden">
       <div className="mx-auto flex max-w-xl items-center gap-3">
-        <span className="text-console-text">mini-gpt</span>
-        <span className="w-24 truncate text-console-text">{top ? show(top.token) : ""}</span>
-        <span className="h-1.5 flex-1 bg-console-line">
-          <span className="block h-full bg-signal" style={{ width: `${Math.round((top?.p ?? 0) * 100)}%` }} />
+        <span aria-hidden="true" className="text-console-text">
+          mini-gpt
         </span>
-        <span className="tabular-nums">{m.tokPerSec} tok/s</span>
+        <span aria-hidden="true" className="w-16 truncate text-console-text">
+          {m.status === "generating" && top ? show(top.token) : ""}
+        </span>
+        <SpeedSlider compact />
       </div>
     </div>
   );
