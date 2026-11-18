@@ -2,14 +2,15 @@
 // The "model UI": a small network that lights up per token, the token just
 // produced, and the model's top-3 guesses with probability bars. It reads the
 // bus only; it never touches the page text. Decorative, so aria-hidden.
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { bus, serverState, type ModelState } from "./bus";
 
 const LAYERS = 4;
 const NODES = 5;
 const W = 240;
 const H = 120;
-const x = (l: number) => 20 + (l * (W - 40)) / (LAYERS - 1);
+const x = (l: number) => 16 + (l * (W - 84)) / (LAYERS - 1); // room on the right for the emitted token
+const STEP_MS = 45; // one layer per 45 ms: a full forward pass reads as a wave, not a blink
 const y = (n: number) => 14 + (n * (H - 28)) / (NODES - 1);
 
 // Which neurons "fire" for a token: derived from its characters, so the same
@@ -21,20 +22,41 @@ function activations(token: string, step: number): boolean[][] {
   );
 }
 
-const show = (t: string) => (t.startsWith(" ") ? "·" + t.slice(1) : t); // make the leading space visible
+const show = (t: string) => t.trim();
 
 function useModel(): ModelState {
   return useSyncExternalStore(bus.subscribe, bus.get, () => serverState);
 }
 
+// Forward-pass wave: while tokens stream, a pulse walks the layers left to
+// right (layer `phase` fires, the one before it fades), then the token pops out
+// on the right. That is the order a real forward pass computes in.
+function usePhase(live: boolean): number {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    if (!live) return;
+    let id = 0;
+    const tick = (now: number) => {
+      setPhase(Math.floor(now / STEP_MS) % (LAYERS + 1));
+      id = requestAnimationFrame(tick);
+    };
+    id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, [live]);
+  return phase;
+}
+
 function Net({ m }: { m: ModelState }) {
-  const act = activations(m.token, m.step);
   const live = m.status === "generating";
+  const phase = usePhase(live);
+  const act = activations(m.token, m.step - (m.step % 8)); // hold one pattern per pass, not per frame
+  const fires = (l: number) => live && l === phase;
+  const fading = (l: number) => live && l === phase - 1;
   const edges = [];
   for (let l = 0; l < LAYERS - 1; l++)
     for (let a = 0; a < NODES; a++)
       for (let b = 0; b < NODES; b++) {
-        const hot = live && act[l][a] && act[l + 1][b];
+        const hot = fading(l) && fires(l + 1) && act[l][a] && act[l + 1][b];
         edges.push(
           <line
             key={`${l}-${a}-${b}`}
@@ -43,7 +65,7 @@ function Net({ m }: { m: ModelState }) {
             x2={x(l + 1)}
             y2={y(b)}
             className={hot ? "stroke-signal" : "stroke-console-line"}
-            strokeWidth={hot ? 1.2 : 0.6}
+            strokeWidth={hot ? 1.3 : 0.6}
           />,
         );
       }
@@ -57,10 +79,19 @@ function Net({ m }: { m: ModelState }) {
             cx={x(l)}
             cy={y(n)}
             r={4.5}
-            className={`transition-[fill] duration-100 ${live && on ? "fill-signal" : "fill-console-node"}`}
+            className={
+              on && fires(l) ? "fill-signal" : on && fading(l) ? "fill-signal opacity-40" : "fill-console-node"
+            }
           />
         )),
       )}
+      <text
+        x={x(LAYERS - 1) + 12}
+        y={H / 2 + 4}
+        className={`fill-console-text font-mono text-[11px] ${live && phase === LAYERS ? "opacity-100" : "opacity-0"}`}
+      >
+        {show(m.token).slice(0, 7)}
+      </text>
     </svg>
   );
 }

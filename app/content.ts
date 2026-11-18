@@ -17,14 +17,15 @@ export const site = {
 
 export const hero = {
   prompt: 'prompt: "who is abishek?"',
-  tagline:
-    "I build backend systems at a fintech, and I'm moving into AI: GenAI, agents, and the infrastructure that serves models.",
+  tagline: "Backend engineer at a fintech, moving into AI: GenAI, agents, and the infrastructure that serves models.",
 };
 
+// Voice: content-engine Mode D (vault/content-ideas/_style/style-profile.md + ai-tells.md).
 export const about = [
-  "I'm a software engineer at a mortgage fintech in Chennai. I work on the platform that turns loan data into the monthly reports investors in US mortgage-backed securities rely on. It's mostly SQL Server and .NET, with Python where it helps, and the numbers have to be right to the cent.",
-  "I studied AI and ML, spent my first years on backend and data work where mistakes cost real money, and now I'm going deeper on the systems side of AI: serving models on my own GPU, measuring them, and training a small GPT of my own.",
-  "Outside work: anime, with Attack on Titan at the top. Books on psychology, negotiation and money (Chris Voss and Morgan Housel right now). Breaking Bad, Marvel, and films like Ford v Ferrari and Dunkirk. I lift, run, take photos, and keep a two-machine homelab that I break and fix more often than I'd admit.",
+  "I'm a backend engineer at a mortgage fintech in Chennai.",
+  "My day job is the reporting platform behind US mortgage-backed securities. Loan data comes in, monthly investor reports go out, and every number has to match to the cent. Mostly SQL Server and .NET, Python whenever it saves me time.",
+  "Somewhere in the middle of all that, I wanted to know what actually happens inside an LLM when it answers. So now I serve models on my own GPU, measure them until the numbers make sense, and I'm training a small GPT of my own. Slowly :)",
+  "Outside work: anime (Attack on Titan, and I will defend that ranking), books on psychology and money (Voss and Housel right now), Breaking Bad, Marvel, Ford v Ferrari. I lift, I run, I take photos, and I keep a two-machine homelab that I break more often than I'd like to admit.",
 ];
 
 export type Milestone = { when: string; what: string; href?: string };
@@ -33,62 +34,71 @@ export type Milestone = { when: string; what: string; href?: string };
 export const path: Milestone[] = [
   {
     when: "2023",
-    what: "Built BookMyVax, a vaccine-booking web app, in five days with no Django before it.",
+    what: "Built BookMyVax, a vaccine-booking web app in Django. Never touched Django before that week. Shipped it in five days.",
     href: "https://github.com/pxndavinci/bookmyvax",
   },
   {
     when: "2024",
-    what: "B.Tech in Artificial Intelligence and Machine Learning, CGPA 8.95. Joined a mortgage fintech as an intern and got a pre-placement offer to stay full-time.",
+    what: "B.Tech in AI and ML, CGPA 8.95. Joined a mortgage fintech as an intern and stayed full-time on a pre-placement offer.",
   },
   {
     when: "2026",
-    what: "Traced the calculation and rounding bugs behind the exceptions our monthly reports got back, and cut them by about 80%. Removed a manual month-end check the team ran every cycle.",
+    what: "Hunted down the calculation and rounding bugs behind the exceptions our monthly reports kept getting back. Most of them stopped coming back. Also retired a manual month-end check the team ran every single cycle.",
   },
   {
     when: "2026",
-    what: "Built an AI agent for my team that knows our codebase and domain language and traces data issues to their root cause.",
+    what: "Built an AI agent for my team. It knows our code and our domain words, and it goes looking for the root cause when the data looks wrong.",
   },
   {
     when: "Sep 2026",
-    what: "Shipped a service-order app that a real laptop repair shop runs on: React and TypeScript, Express and Postgres, contract-first API, and deploys itself with rollback.",
+    what: "Shipped a service-order app for a real laptop repair shop, and the shop runs on it. React and TypeScript in front, Express and Postgres behind, and it rolls itself back if a deploy goes wrong.",
     href: "https://github.com/pxndavinci/laptop-service-management",
   },
   {
     when: "Nov 2026",
-    what: "Got vLLM serving on a new-generation GPU with the stock image and no source build, then benchmarked it.",
+    what: "Got vLLM serving on a brand-new GPU generation. Expected a source build. The stock image just worked.",
   },
 ];
 
 export type Project = {
   title: string;
-  body: string;
+  body: string[];
   metrics: { value: string; label: string }[];
   next: string;
 };
 
 export const building: Project[] = [
   {
-    title: "Serving an LLM on my own GPU, measured",
-    body: "Qwen3-0.6B on vLLM, running on the RTX 5070 Ti in my homelab, benchmarked with vllm bench serve: 512 tokens in, 128 out, 200 prompts per run. My first saturated run hit the prefix cache, which hid about 20% of throughput and 2.7× of tail latency, so every run now gets a fresh seed.",
+    title: "Serving an LLM on my own GPU, and measuring it",
+    body: [
+      "Qwen3-0.6B on vLLM, on the RTX 5070 Ti in my homelab. 512 tokens in, 128 out, 200 prompts per run.",
+      "My first full-load run looked great. Too great. The prompts were repeats, so the prefix cache was quietly doing the work and hid about 20% of throughput and 2.7× of the tail latency. Every run gets a fresh seed now.",
+    ],
     metrics: [
       { value: "13 ms", label: "time to first token, p50, at 1 req/s" },
       { value: "1,011", label: "output tokens/s at 8 req/s" },
       { value: "5,456", label: "output tokens/s with 200 requests at once" },
     ],
-    next: "Next: my own continuous batcher with a paged KV cache, run against vLLM on the same workload.",
+    next: "Next: my own continuous batcher with a paged KV cache, against vLLM on the same workload. I expect to lose. I want to know by how much.",
   },
   {
-    title: "My own agent workspace",
-    body: "The setup I run Claude Code in every day: skills for recurring jobs (resume builds, research briefs, job-description reviews), hooks that keep its memory clean, and a layered memory that syncs across my machines, so every session starts knowing what the last one decided.",
+    title: "My agent workspace",
+    body: [
+      "Claude Code is where most of my work starts now, so I built a proper workspace around it.",
+      "Skills for the jobs I repeat, like resume builds and reading job descriptions. Hooks that stop its memory from rotting. One memory synced across my machines, so a new session starts knowing what the last one decided.",
+    ],
     metrics: [
       { value: "15", label: "skills, each backed by its own scripts" },
       { value: "2", label: "machines sharing one memory, synced peer to peer" },
     ],
-    next: "Next: evals, so a change to a skill is measured before it ships.",
+    next: "Next: evals. A change to a skill should prove itself before it ships.",
   },
   {
-    title: "A job search that runs 24/7",
-    body: "Python watches about 48 public job boards, scores every new posting, picks the right resume and pre-fills the application. Claude writes only the answers that need judgment for that one job. Nothing is submitted until I approve it from my phone.",
+    title: "A job search that runs while I sleep",
+    body: [
+      "Python watches about 48 public job boards and scores every new posting. Anything that clears the bar gets the right resume and a pre-filled form.",
+      "Claude only writes the answers that need judgment for that one job. And nothing goes out until I approve it on my phone.",
+    ],
     metrics: [
       { value: "~48", label: "job boards watched" },
       { value: "285", label: "relevant roles found on the first scan" },
@@ -98,9 +108,12 @@ export const building: Project[] = [
   },
   {
     title: "Life OS",
-    body: "One place to run my day: routine, tasks, notes and search, on my own server. The Postgres schema is done. It keeps every version of a plan instead of overwriting it, and database constraints make sure two versions can never overlap. I proved every constraint by making it fail before merging.",
+    body: [
+      "One place to run my day: routine, tasks, notes, search. On my own server.",
+      "The Postgres schema is done. It never overwrites a plan, it keeps every version, and the database itself refuses two versions that overlap. Before merging, I made every constraint fail on purpose, just to watch it fail.",
+    ],
     metrics: [{ value: "11", label: "Postgres tables, versioned (SCD Type 2)" }],
-    next: "Next: the Go API on top of it.",
+    next: "Next: the Go API on top.",
   },
 ];
 
@@ -126,5 +139,5 @@ export const links = [
 export const footer = {
   tease:
     "Hey, yes you are correct, it is mostly vibe coded XD. But the idea is mine :) I just used the new tech we have, don't judge blindly ;)",
-  more: "More sections coming: books, anime, photography, each written in its own style.",
+  more: "More sections coming: books, anime, photography. Each one gets its own look.",
 };

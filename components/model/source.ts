@@ -23,6 +23,13 @@ function hash(s: string): number {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
+  // Final avalanche (MurmurHash3 fmix32): FNV alone barely changes for "id:41"
+  // vs "id:42", which bunched the unsure words together in one paragraph.
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
   return h >>> 0;
 }
 const unit = (s: string) => hash(s) / 4294967295; // → [0, 1]
@@ -42,7 +49,9 @@ export const cannedSource: TokenSource = {
     return tokens.map((tok, i) => {
       const r = unit(`${sectionId}:${i}`);
       const isPunct = /^\s*[^\w\s]$/.test(tok);
-      const p = isPunct ? 0.9 + 0.09 * r : 0.42 + 0.53 * r; // punctuation is easy to predict
+      // Like a real model: punctuation is near-certain, most words are confident,
+      // and about 1 word in 16 is a genuine coin-flip (those get the dotted underline).
+      const p = isPunct ? 0.9 + 0.09 * r : r < 0.06 ? 0.24 + 3 * r : 0.55 + 0.42 * Math.sqrt(r);
       const rest = 1 - p;
       const a = pick(`${sectionId}:${i}:a`, tok);
       const b = pick(`${sectionId}:${i}:b`, tok);

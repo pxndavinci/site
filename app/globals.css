@@ -32,7 +32,73 @@
 }
 .stream .t.on {
   opacity: 1;
-  animation: settle 450ms ease-out;
+  /* --settle is set per token from its probability: sure words settle fast. */
+  animation: settle var(--settle, 450ms) ease-out;
+}
+[data-stream-section] {
+  position: relative; /* the ghost below is positioned inside the section */
+}
+
+/* Candidate flicker: the runner-up word, drawn faintly where the next token lands. */
+.ghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: pre;
+  color: var(--color-signal-ink);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Coin-flip words: the model was unsure, and the page keeps that visible. */
+.t.doubt {
+  text-decoration: underline dotted var(--color-signal);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 5px;
+  cursor: help;
+}
+.guess-tip {
+  position: fixed;
+  z-index: 20;
+  min-width: 11rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 2px;
+  background: var(--color-console);
+  color: var(--color-console-muted);
+  font: 11px/1.7 var(--font-mono);
+  opacity: 0;
+  transform: translateY(-3px);
+  transition:
+    opacity 120ms,
+    transform 120ms;
+  pointer-events: none;
+}
+.guess-tip.open {
+  opacity: 1;
+  transform: none;
+}
+.guess-head {
+  margin-bottom: 0.2rem;
+}
+.guess-row {
+  display: grid;
+  grid-template-columns: 1fr auto 2.2rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+.guess-row i {
+  height: 4px;
+  background: var(--color-console-muted);
+}
+.guess-row b {
+  font-weight: 400;
+  text-align: right;
+}
+.guess-row.picked {
+  color: var(--color-console-text);
+}
+.guess-row.picked i {
+  background: var(--color-signal);
 }
 /* A token lands in the model's colour and settles into ink, like a sampled token. */
 @keyframes settle {

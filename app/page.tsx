@@ -100,7 +100,7 @@ export default function Home() {
                           href={m.href}
                           className="font-mono text-xs whitespace-nowrap text-accent underline decoration-1 underline-offset-4 hover:decoration-2"
                         >
-                          code ↗
+                          <StreamText text="code ↗" />
                         </a>
                       </>
                     )}
@@ -116,7 +116,9 @@ export default function Home() {
               {building.map((proj, i) => (
                 <article key={proj.title} id={`build-${i}`} data-stream-section>
                   <StreamText as="h2" text={proj.title} className="text-2xl leading-snug font-medium" />
-                  <StreamText as="p" text={proj.body} className="mt-3 text-lg leading-relaxed" />
+                  {proj.body.map((para, j) => (
+                    <StreamText key={j} as="p" text={para} className="mt-3 text-lg leading-relaxed" />
+                  ))}
                   <dl className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-x-6 gap-y-4 border-l-2 border-paper-edge pl-4">
                     {proj.metrics.map((m) => (
                       <div key={m.label}>
