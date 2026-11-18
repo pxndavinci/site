@@ -10,6 +10,7 @@ export type ModelState = {
   topk: TopK[];
   tokPerSec: number;
   temperature: number;
+  enabled: boolean; // the top-bar switch: false = full text and final image, no motion
 };
 
 let state: ModelState = {
@@ -19,6 +20,7 @@ let state: ModelState = {
   topk: [],
   tokPerSec: 0,
   temperature: 0.7,
+  enabled: true,
 };
 const listeners = new Set<() => void>();
 

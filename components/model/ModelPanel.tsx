@@ -2,6 +2,9 @@
 // The "model UI": a small network that lights up per token, the token just
 // produced, and the model's top-3 guesses with probability bars. It reads the
 // bus only; it never touches the page text. Decorative, so aria-hidden.
+// Wide screens: a horizontal card pinned bottom-right, in the empty gutter
+// beside the text (from 1280 px the gutter is wide enough that it never covers
+// a word; measured: 1152 px overlapped the text by 32 px). Narrower: the slim bar along the bottom.
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { bus, serverState, type ModelState } from "./bus";
 
@@ -24,11 +27,11 @@ function activations(token: string, step: number): boolean[][] {
 
 const show = (t: string) => t.trim();
 
-// Is the desktop layout active? The server (and hydration) assume yes, then the
+// Is the wide layout active? The server (and hydration) assume yes, then the
 // real answer takes over. Each panel only renders, and only subscribes to the
 // token stream, on the layout where it is visible: the hidden one used to
 // re-render 20 times a second for nothing.
-const DESKTOP = "(min-width: 1024px)";
+const DESKTOP = "(min-width: 1280px)"; // keep in sync with xl:hidden in Bar
 function useDesktop(): boolean {
   return useSyncExternalStore(
     (cb) => {
@@ -106,7 +109,7 @@ function Net({ m }: { m: ModelState }) {
       <text
         x={x(LAYERS - 1) + 12}
         y={H / 2 + 4}
-        className={`fill-console-text font-mono text-[11px] ${live && phase === LAYERS ? "opacity-100" : "opacity-0"}`}
+        className={`fill-console-text font-mono text-[15px] ${live && phase === LAYERS ? "opacity-100" : "opacity-0"}`}
       >
         {show(m.token).slice(0, 7)}
       </text>
@@ -119,7 +122,7 @@ function TopKBars({ m }: { m: ModelState }) {
   return (
     <ol className="space-y-1.5">
       {rows.map((r, i) => (
-        <li key={i} className="grid grid-cols-[6.5rem_1fr_2.5rem] items-center gap-2">
+        <li key={i} className="grid grid-cols-[5.5rem_1fr_2rem] items-center gap-2">
           <span className={`truncate ${i === 0 ? "text-console-text" : "text-console-muted"}`}>{show(r.token)}</span>
           <span className="h-1.5 bg-console-line">
             <span
@@ -143,7 +146,7 @@ const statusLine = (m: ModelState) =>
         ? `done · ${m.step} tokens`
         : `${m.tokPerSec} tok/s · step ${m.step} · T ${m.temperature}`;
 
-/** Desktop: sticky panel beside the text. */
+/** Wide screens: a horizontal card pinned to the bottom-right corner. */
 export function ModelPanel() {
   return useDesktop() ? <Panel /> : null;
 }
@@ -151,25 +154,30 @@ export function ModelPanel() {
 function Panel() {
   const m = useModel();
   return (
-    <div aria-hidden="true" className="rounded-sm bg-console p-4 font-mono text-[11px] leading-5 text-console-muted">
-      <div className="mb-3 flex justify-between">
+    <div
+      aria-hidden="true"
+      className="fixed right-6 bottom-6 z-10 w-[26rem] rounded-sm bg-console p-3.5 font-mono text-[11px] leading-5 text-console-muted shadow-lg"
+    >
+      <div className="mb-2 flex justify-between">
         <span className="text-console-text">mini-gpt</span>
         <span>4 layers · demo</span>
       </div>
-      <Net m={m} />
-      <div className="mt-3 border-t border-console-line pt-3">
-        <div className="mb-2">next token</div>
-        <TopKBars m={m} />
+      <div className="grid grid-cols-[9.5rem_1fr] items-center gap-4">
+        <Net m={m} />
+        <div>
+          <div className="mb-1.5">next token</div>
+          <TopKBars m={m} />
+        </div>
       </div>
-      <div className="mt-3 border-t border-console-line pt-2 tabular-nums">{statusLine(m)}</div>
-      <p className="mt-3 text-console-muted">
+      <div className="mt-2 border-t border-console-line pt-1.5 tabular-nums">{statusLine(m)}</div>
+      <p className="mt-1 text-console-muted">
         Replaying pre-written text for now. A nanoGPT I&apos;m training will write this page for real.
       </p>
     </div>
   );
 }
 
-/** Phone: a slim bar pinned to the bottom, only while tokens are streaming. */
+/** Phone and small laptop: a slim bar pinned to the bottom, only while tokens are streaming. */
 export function ModelBar() {
   return useDesktop() ? null : <Bar />;
 }
@@ -180,7 +188,7 @@ function Bar() {
   return (
     <div
       aria-hidden="true"
-      className={`fixed inset-x-0 bottom-0 z-10 bg-console px-4 py-2 font-mono text-[11px] text-console-muted transition-opacity duration-500 lg:hidden ${
+      className={`fixed inset-x-0 bottom-0 z-10 bg-console px-4 py-2 font-mono text-[11px] text-console-muted transition-opacity duration-500 xl:hidden ${
         m.status === "generating" ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
     >
