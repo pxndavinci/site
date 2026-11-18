@@ -40,6 +40,7 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
       const start = performance.now();
       let shown = 0;
       running++;
+      section.classList.add("live"); // lets CSS-only effects (the timeline rail) start with the text
 
       const frame = (now: number) => {
         if (cancelled) return;

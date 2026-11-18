@@ -4,7 +4,7 @@
 import { ModelBar, ModelPanel } from "@/components/model/ModelPanel";
 import { StreamController } from "@/components/model/StreamController";
 import { StreamText } from "@/components/model/StreamText";
-import { about, building, footer, hero, links, site } from "./content";
+import { about, building, footer, hero, links, path, site } from "./content";
 
 // schema.org Person: tells search engines who this page is about.
 const personJsonLd = {
@@ -34,10 +34,13 @@ export default function Home() {
       <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-16">
         <main className="max-w-[40rem] pb-24">
           <header className="flex justify-between py-8 font-mono text-xs text-ink-muted">
-            <span>abishek.joatverse.com</span>
+            <span className="hidden sm:inline">abishek.joatverse.com</span>
             <nav className="flex gap-4">
               <a href="#about" className="hover:text-ink">
                 about
+              </a>
+              <a href="#path" className="hover:text-ink">
+                path
               </a>
               <a href="#building" className="hover:text-ink">
                 building
@@ -77,8 +80,38 @@ export default function Home() {
             </div>
           </section>
 
+          <section id="path" data-stream-section className="border-t border-paper-edge py-14">
+            <Label n="02">path so far</Label>
+            {/* The rail draws itself top to bottom while this section streams (globals.css → .timeline). */}
+            <ol className="timeline space-y-7">
+              {path.map((m, i) => (
+                <li
+                  key={i}
+                  style={{ "--i": i } as React.CSSProperties}
+                  className="grid gap-1 sm:grid-cols-[5.5rem_1fr] sm:gap-4"
+                >
+                  <span className="pt-1 font-mono text-xs text-ink-muted tabular-nums">{m.when}</span>
+                  <p className="text-lg leading-relaxed">
+                    <StreamText text={m.what} />
+                    {m.href && (
+                      <>
+                        {" "}
+                        <a
+                          href={m.href}
+                          className="font-mono text-xs whitespace-nowrap text-accent underline decoration-1 underline-offset-4 hover:decoration-2"
+                        >
+                          code ↗
+                        </a>
+                      </>
+                    )}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </section>
+
           <section id="building" className="border-t border-paper-edge py-14">
-            <Label n="02">now building</Label>
+            <Label n="03">now building</Label>
             <div className="space-y-14">
               {building.map((proj, i) => (
                 <article key={proj.title} id={`build-${i}`} data-stream-section>
@@ -102,7 +135,7 @@ export default function Home() {
           </section>
 
           <section id="contact" data-stream-section className="border-t border-paper-edge py-14">
-            <Label n="03">contact</Label>
+            <Label n="04">contact</Label>
             <ul className="space-y-3 text-lg">
               {links.map((l) => (
                 <li key={l.label} className="grid grid-cols-[6rem_1fr] items-baseline gap-4">

@@ -56,6 +56,56 @@
   }
 }
 
+/* Timeline: a rail with one dot per milestone. With streaming on, the rail
+   grows top to bottom and the dots land one after another once the section
+   starts (the controller adds .live). Without streaming it is simply drawn. */
+.timeline {
+  position: relative;
+  padding-left: 1.25rem;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 0.2rem;
+  top: 0.55rem;
+  bottom: 0.55rem;
+  width: 1px;
+  background: var(--color-paper-edge);
+  transform-origin: top;
+}
+.timeline li {
+  position: relative;
+}
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -1.25rem;
+  top: 0.55rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--color-ink);
+}
+.stream .timeline::before {
+  transform: scaleY(0);
+  transition: transform 900ms ease-out;
+}
+.stream .live .timeline::before {
+  transform: scaleY(1);
+}
+.stream .timeline li::before {
+  opacity: 0;
+  transform: scale(0.3);
+  transition:
+    opacity 200ms,
+    transform 200ms;
+  transition-delay: calc(var(--i) * 140ms);
+}
+.stream .live .timeline li::before {
+  opacity: 1;
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .caret {
     display: none;
