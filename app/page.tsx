@@ -61,8 +61,8 @@ export default function Home() {
           <section id="hero" data-stream-section className="pt-6 pb-16 sm:pt-12">
             {/* Phone: small, above the name. Wide screens: in the right-hand gutter, beside it. */}
             <DiffusionPortrait
-              src="/portrait.jpg"
-              alt="Portrait of Abishek Nallathambi"
+              src="/portrait.webp"
+              alt="Illustrated portrait of Abishek Nallathambi"
               className="mb-6 w-28 lg:absolute lg:top-32 lg:right-8 lg:mb-0 lg:w-[220px]"
             />
             <p className="mb-4 font-mono text-xs text-ink-muted">{hero.prompt}</p>
