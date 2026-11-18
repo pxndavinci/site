@@ -33,13 +33,14 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
     }
     (window as unknown as { __streamReady: boolean }).__streamReady = true;
 
-    // One blinking caret, moved to wherever the newest token is.
+    // One blinking caret, placed once at the end of a finished section. While a
+    // section streams, the ghost marks the writing edge instead: moving an
+    // inline caret every frame nudged the text after it (layout shift).
     const caret = document.createElement("span");
     caret.className = "caret";
     caret.setAttribute("aria-hidden", "true");
 
-    // One ghost for the candidate flicker. Absolutely positioned over the next
-    // (still hidden) token, so it never pushes text around.
+    // One ghost for the candidate flicker (see the frame loop).
     const ghost = document.createElement("span");
     ghost.className = "ghost";
     ghost.setAttribute("aria-hidden", "true");
@@ -85,15 +86,26 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
       const duration = Math.min(MAX_MS, Math.max(MIN_MS, tokens.length * MS_PER_TOKEN));
       const start = performance.now();
       let shown = 0;
+      let lastEmit = 0;
+      let pending = 0; // tokens landed since the last panel update
       running++;
       section.classList.add("live"); // lets CSS-only effects (the timeline rail) start with the text
+
+      // At most one "unsure" word per section, never in the hero: more than that
+      // starts to read like spell-check squiggles instead of a model's doubt.
+      let doubtAt = -1;
+      if (section.id !== "hero")
+        tokens.forEach((tok, i) => {
+          const p = topk[i]?.[0]?.p ?? 1;
+          if (p < DOUBT_BELOW && /\w{5,}/.test(tok) && (doubtAt < 0 || p < topk[doubtAt][0].p)) doubtAt = i;
+        });
 
       const land = (i: number) => {
         const span = spans[i];
         const p = topk[i]?.[0]?.p ?? 1;
         // Probability ink: confident words settle in ~200 ms, unsure ones take up to ~750 ms.
         span.style.setProperty("--settle", `${Math.round(200 + (1 - p) * 700)}ms`);
-        if (p < DOUBT_BELOW && /\w{5,}/.test(tokens[i])) {
+        if (i === doubtAt) {
           span.classList.add("doubt");
           guesses.set(span, topk[i]);
         }
@@ -103,32 +115,37 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
       const frame = (now: number) => {
         if (cancelled) return;
         const target = Math.min(tokens.length, Math.ceil(((now - start) / duration) * tokens.length));
-        const fresh = target - shown;
+        pending += Math.max(0, target - shown);
         for (; shown < target; shown++) land(shown);
-        const last = spans[shown - 1];
-        if (last) last.after(caret);
 
-        // Candidate flicker: the runner-up for the NEXT token, drawn where it will land.
+        // Candidate flicker: the runner-up for the NEXT token, inserted right
+        // before it. The ghost is position:absolute with no offsets, so the
+        // browser draws it exactly where the next word will land, in that
+        // paragraph's font, without taking space and without us measuring layout.
         const next = spans[shown];
         const alt = topk[shown]?.[1]?.token;
         if (next && alt) {
-          const box = section.getBoundingClientRect();
-          const at = next.getBoundingClientRect();
           ghost.textContent = alt;
-          ghost.style.font = getComputedStyle(next).font;
-          ghost.style.transform = `translate(${at.left - box.left}px, ${at.top - box.top}px)`;
-          if (ghost.parentElement !== section) section.append(ghost);
-        } else if (ghost.parentElement === section) ghost.remove();
+          if (ghost.nextSibling !== next) next.before(ghost);
+        } else ghost.remove();
 
-        bus.set({
-          status: "generating",
-          step: bus.get().step + Math.max(0, fresh), // sections can stream in parallel; count all
-          token: tokens[shown - 1] ?? "",
-          topk: topk[shown - 1] ?? [],
-          tokPerSec: Math.round((shown / Math.max(1, now - start)) * 1000),
-          temperature,
-        });
-        if (shown < tokens.length) requestAnimationFrame(frame);
+        const done = shown >= tokens.length;
+        if (done) spans[tokens.length - 1]?.after(caret);
+        // The panel only needs ~14 updates a second; every frame cost main-thread time.
+        if (done || now - lastEmit > 70) {
+          lastEmit = now;
+          const landed = pending;
+          pending = 0;
+          bus.set({
+            status: "generating",
+            step: bus.get().step + landed, // sections can stream in parallel; count all
+            token: tokens[shown - 1] ?? "",
+            topk: topk[shown - 1] ?? [],
+            tokPerSec: Math.round((shown / Math.max(1, now - start)) * 1000),
+            temperature,
+          });
+        }
+        if (!done) requestAnimationFrame(frame);
         else if (--running === 0) bus.set({ status: "done" });
       };
       requestAnimationFrame(frame);

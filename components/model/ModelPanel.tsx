@@ -10,7 +10,7 @@ const NODES = 5;
 const W = 240;
 const H = 120;
 const x = (l: number) => 16 + (l * (W - 84)) / (LAYERS - 1); // room on the right for the emitted token
-const STEP_MS = 45; // one layer per 45 ms: a full forward pass reads as a wave, not a blink
+const STEP_MS = 55; // one layer per 45 ms: a full forward pass reads as a wave, not a blink
 const y = (n: number) => 14 + (n * (H - 28)) / (NODES - 1);
 
 // Which neurons "fire" for a token: derived from its characters, so the same
@@ -23,6 +23,23 @@ function activations(token: string, step: number): boolean[][] {
 }
 
 const show = (t: string) => t.trim();
+
+// Is the desktop layout active? The server (and hydration) assume yes, then the
+// real answer takes over. Each panel only renders, and only subscribes to the
+// token stream, on the layout where it is visible: the hidden one used to
+// re-render 20 times a second for nothing.
+const DESKTOP = "(min-width: 1024px)";
+function useDesktop(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = matchMedia(DESKTOP);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => matchMedia(DESKTOP).matches,
+    () => true,
+  );
+}
 
 function useModel(): ModelState {
   return useSyncExternalStore(bus.subscribe, bus.get, () => serverState);
@@ -37,7 +54,8 @@ function usePhase(live: boolean): number {
     if (!live) return;
     let id = 0;
     const tick = (now: number) => {
-      setPhase(Math.floor(now / STEP_MS) % (LAYERS + 1));
+      const next = Math.floor(now / STEP_MS) % (LAYERS + 1);
+      setPhase((p) => (p === next ? p : next)); // same value → React skips the render
       id = requestAnimationFrame(tick);
     };
     id = requestAnimationFrame(tick);
@@ -127,6 +145,10 @@ const statusLine = (m: ModelState) =>
 
 /** Desktop: sticky panel beside the text. */
 export function ModelPanel() {
+  return useDesktop() ? <Panel /> : null;
+}
+
+function Panel() {
   const m = useModel();
   return (
     <div aria-hidden="true" className="rounded-sm bg-console p-4 font-mono text-[11px] leading-5 text-console-muted">
@@ -149,6 +171,10 @@ export function ModelPanel() {
 
 /** Phone: a slim bar pinned to the bottom, only while tokens are streaming. */
 export function ModelBar() {
+  return useDesktop() ? null : <Bar />;
+}
+
+function Bar() {
   const m = useModel();
   const top = m.topk[0];
   return (

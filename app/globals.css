@@ -35,15 +35,10 @@
   /* --settle is set per token from its probability: sure words settle fast. */
   animation: settle var(--settle, 450ms) ease-out;
 }
-[data-stream-section] {
-  position: relative; /* the ghost below is positioned inside the section */
-}
 
 /* Candidate flicker: the runner-up word, drawn faintly where the next token lands. */
 .ghost {
-  position: absolute;
-  left: 0;
-  top: 0;
+  position: absolute; /* no top/left: it sits where it was inserted, out of the flow */
   white-space: pre;
   color: var(--color-signal-ink);
   opacity: 0.4;
@@ -176,6 +171,15 @@
   .caret {
     display: none;
   }
+}
+
+/* A link's underline waits for its words. */
+.stream a:has(.t:not(.on)) {
+  text-decoration-color: transparent;
+}
+/* The ghost can sit at the very end of a line; never let it widen the page. */
+body {
+  overflow-x: clip;
 }
 
 ::selection {
