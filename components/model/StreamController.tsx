@@ -17,7 +17,7 @@ import { useEffect } from "react";
 import { bus } from "./bus";
 import { cannedSource, type TokenSource, type TopK } from "./source";
 
-const MS_PER_TOKEN = 5; // ~200 tokens/s on screen
+const MS_PER_TOKEN = 10; // ~100 tokens/s on screen; MAX_MS still caps long sections at 0.9 s
 const MIN_MS = 300;
 const MAX_MS = 900;
 const DOUBT_BELOW = 0.45; // a word the model was this unsure of keeps its underline
