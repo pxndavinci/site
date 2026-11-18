@@ -6,7 +6,7 @@
 // beside the text (from 1280 px the gutter is wide enough that it never covers
 // a word; measured: 1152 px overlapped the text by 32 px). Narrower: the slim bar along the bottom.
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { bus, serverState, type ModelState } from "./bus";
+import { bus, REAL_TIME, serverState, type ModelState } from "./bus";
 
 const LAYERS = 4;
 const NODES = 5;
@@ -154,26 +154,62 @@ export function ModelPanel() {
 function Panel() {
   const m = useModel();
   return (
-    <div
-      aria-hidden="true"
-      className="fixed right-6 bottom-6 z-10 w-[26rem] rounded-sm bg-console p-3.5 font-mono text-[11px] leading-5 text-console-muted shadow-lg"
-    >
-      <div className="mb-2 flex justify-between">
+    <div className="fixed right-6 bottom-6 z-10 w-[26rem] rounded-sm bg-console p-3.5 font-mono text-[11px] leading-5 text-console-muted shadow-lg">
+      <div aria-hidden="true" className="mb-2 flex justify-between">
         <span className="text-console-text">mini-gpt</span>
         <span>4 layers · demo</span>
       </div>
-      <div className="grid grid-cols-[9.5rem_1fr] items-center gap-4">
+      <div aria-hidden="true" className="grid grid-cols-[9.5rem_1fr] items-center gap-4">
         <Net m={m} />
         <div>
           <div className="mb-1.5">next token</div>
           <TopKBars m={m} />
         </div>
       </div>
-      <div className="mt-2 border-t border-console-line pt-1.5 tabular-nums">{statusLine(m)}</div>
-      <p className="mt-1 text-console-muted">
+      <div aria-hidden="true" className="mt-2 border-t border-console-line pt-1.5 tabular-nums">
+        {statusLine(m)}
+      </div>
+      <SpeedSlider />
+      <p aria-hidden="true" className="mt-1 text-console-muted">
         Replaying pre-written text for now. A nanoGPT I&apos;m training will write this page for real.
       </p>
     </div>
+  );
+}
+
+// Speed slider, log scale: 0 → 1 tok/s (watch each word get picked, runner-up
+// first), 50 → ~14 tok/s, 100 → real time (~200 tok/s). Log because the slow end is where the
+// detail is; a linear slider would spend most of its length on "fast".
+const toSpeed = (v: number) => Math.round(REAL_TIME ** (v / 100));
+const toSlider = (s: number) => Math.round((Math.log(s) / Math.log(REAL_TIME)) * 100);
+
+function SpeedSlider() {
+  const speed = useSyncExternalStore(
+    bus.subscribe,
+    () => bus.get().speed,
+    () => REAL_TIME,
+  );
+  const label = speed >= REAL_TIME ? "real time" : `${speed} tok/s`;
+  return (
+    <label className="mt-2 flex items-center gap-3 border-t border-console-line pt-2">
+      <span>speed</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={toSlider(speed)}
+        aria-valuetext={label}
+        onChange={(e) => {
+          const s = toSpeed(Number(e.target.value));
+          bus.set({ speed: s });
+          try {
+            localStorage.setItem("mini-gpt-speed", String(s));
+          } catch {}
+        }}
+        className="h-1 flex-1 cursor-pointer accent-signal"
+      />
+      <span className="w-16 text-right text-console-text tabular-nums">{label}</span>
+    </label>
   );
 }
 

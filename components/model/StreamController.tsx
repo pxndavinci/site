@@ -15,7 +15,7 @@
 // it and bus.enabled, and this effect re-runs on that change. Without the class
 // every token is visible and this component does nothing.
 import { useEffect, useSyncExternalStore } from "react";
-import { bus } from "./bus";
+import { bus, REAL_TIME } from "./bus";
 import { cannedSource, type TokenSource, type TopK } from "./source";
 
 const MS_PER_TOKEN = 10; // ~100 tokens/s on screen; MAX_MS still caps long sections at 0.9 s
@@ -34,6 +34,10 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
   useEffect(() => {
     const html = document.documentElement;
     (window as unknown as { __streamReady: boolean }).__streamReady = true;
+    try {
+      const saved = Number(localStorage.getItem("mini-gpt-speed"));
+      if (saved > 0) bus.set({ speed: saved });
+    } catch {}
     if (!html.classList.contains("stream")) {
       bus.set({ enabled: false, status: "static" });
       return;
@@ -99,8 +103,12 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
       const tokens = spans.map((s) => s.textContent ?? "");
       const topk = await source.topk(section.id, tokens);
       const temperature = Number(section.dataset.temp ?? 0.7);
-      const duration = Math.min(MAX_MS, Math.max(MIN_MS, tokens.length * MS_PER_TOKEN));
-      const start = performance.now();
+      // Real time: the whole section in 0.3–0.9 s. Slower: the slider's tokens/s,
+      // read every frame, so moving the slider changes a section mid-stream.
+      const realRate = tokens.length / (Math.min(MAX_MS, Math.max(MIN_MS, tokens.length * MS_PER_TOKEN)) / 1000);
+      const rate = () => (bus.get().speed >= REAL_TIME ? realRate : bus.get().speed);
+      let prev = performance.now();
+      let owed = 0; // tokens due so far, fractional
       let shown = 0;
       let lastEmit = 0;
       let pending = 0; // tokens landed since the last panel update
@@ -130,7 +138,9 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
 
       const frame = (now: number) => {
         if (cancelled) return;
-        const target = Math.min(tokens.length, Math.ceil(((now - start) / duration) * tokens.length));
+        owed += (Math.max(0, now - prev) / 1000) * rate();
+        prev = now;
+        const target = Math.min(tokens.length, Math.ceil(owed));
         pending += Math.max(0, target - shown);
         for (; shown < target; shown++) land(shown);
 
@@ -157,7 +167,7 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
             step: bus.get().step + landed, // sections can stream in parallel; count all
             token: tokens[shown - 1] ?? "",
             topk: topk[shown - 1] ?? [],
-            tokPerSec: Math.round((shown / Math.max(1, now - start)) * 1000),
+            tokPerSec: Math.round(rate()),
             temperature,
           });
         }
