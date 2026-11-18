@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+/* Design tokens, named by job (vault/venture/site/color-system.md).
+   60% paper + ink · 30% console (the model UI) · 10% accent, links and the
+   resume button only. Desaturated on purpose; OKLCH so lightness is predictable.
+   Contrast (WCAG 2.2 AA): ink and muted on paper ≥ 4.5:1, accent on paper ≥ 4.5:1. */
+@theme {
+  --color-paper: oklch(0.975 0.008 85);
+  --color-paper-edge: oklch(0.9 0.012 85);
+  --color-ink: oklch(0.24 0.015 60);
+  --color-ink-muted: oklch(0.46 0.015 60);
+  --color-accent: oklch(0.5 0.15 35);
+
+  --color-console: oklch(0.22 0.014 250);
+  --color-console-line: oklch(0.32 0.014 250);
+  --color-console-node: oklch(0.4 0.014 250);
+  --color-console-muted: oklch(0.72 0.012 250);
+  --color-console-text: oklch(0.94 0.008 250);
+  --color-signal: oklch(0.8 0.1 165);
+  --color-signal-tint: oklch(0.9 0.05 165);
+  --color-signal-ink: oklch(0.52 0.1 165);
+
+  --font-serif: var(--font-newsreader), Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+/* ── The streaming effect ──────────────────────────────────────────────
+   Only active when <html> has .stream (JS on + no reduced-motion request).
+   Hidden tokens keep their space (opacity, not display), so nothing shifts. */
+.stream .t {
+  opacity: 0;
+}
+.stream .t.on {
+  opacity: 1;
+  /* --settle is set per token from its probability: sure words settle fast. */
+  animation: settle var(--settle, 450ms) ease-out;
+}
+
+/* Candidate flicker: the runner-up word, drawn faintly where the next token lands. */
+.ghost {
+  position: absolute; /* no top/left: it sits where it was inserted, out of the flow */
+  white-space: pre;
+  color: var(--color-signal-ink);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Coin-flip words: the model was unsure, and the page keeps that visible. */
+.t.doubt {
+  text-decoration: underline dotted var(--color-signal);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 5px;
+  cursor: help;
+}
+.guess-tip {
+  position: fixed;
+  z-index: 20;
+  min-width: 11rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 2px;
+  background: var(--color-console);
+  color: var(--color-console-muted);
+  font: 11px/1.7 var(--font-mono);
+  opacity: 0;
+  transform: translateY(-3px);
+  transition:
+    opacity 120ms,
+    transform 120ms;
+  pointer-events: none;
+}
+.guess-tip.open {
+  opacity: 1;
+  transform: none;
+}
+.guess-head {
+  margin-bottom: 0.2rem;
+}
+.guess-row {
+  display: grid;
+  grid-template-columns: 1fr auto 2.2rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+.guess-row i {
+  height: 4px;
+  background: var(--color-console-muted);
+}
+.guess-row b {
+  font-weight: 400;
+  text-align: right;
+}
+.guess-row.picked {
+  color: var(--color-console-text);
+}
+.guess-row.picked i {
+  background: var(--color-signal);
+}
+/* A token lands in the model's colour and settles into ink, like a sampled token. */
+@keyframes settle {
+  from {
+    color: var(--color-signal-ink);
+  }
+}
+
+.caret {
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.12em;
+  background: var(--color-ink);
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Timeline: a rail with one dot per milestone. With streaming on, the rail
+   grows top to bottom and the dots land one after another once the section
+   starts (the controller adds .live). Without streaming it is simply drawn. */
+.timeline {
+  position: relative;
+  padding-left: 1.25rem;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 0.2rem;
+  top: 0.55rem;
+  bottom: 0.55rem;
+  width: 1px;
+  background: var(--color-paper-edge);
+  transform-origin: top;
+}
+.timeline li {
+  position: relative;
+}
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -1.25rem;
+  top: 0.55rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--color-ink);
+}
+.stream .timeline::before {
+  transform: scaleY(0);
+  transition: transform 900ms ease-out;
+}
+.stream .live .timeline::before {
+  transform: scaleY(1);
+}
+.stream .timeline li::before {
+  opacity: 0;
+  transform: scale(0.3);
+  transition:
+    opacity 200ms,
+    transform 200ms;
+  transition-delay: calc(var(--i) * 140ms);
+}
+.stream .live .timeline li::before {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret {
+    display: none;
+  }
+}
+
+/* A link's underline waits for its words. */
+.stream a:has(.t:not(.on)) {
+  text-decoration-color: transparent;
+}
+/* The ghost can sit at the very end of a line; never let it widen the page. */
+body {
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-signal-tint);
+}
