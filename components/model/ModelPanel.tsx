@@ -2,8 +2,11 @@
 // The "model UI": a small network that lights up per token, the token just
 // produced, and the model's top-3 guesses with probability bars. It reads the
 // bus only; it never touches the page text. Decorative, so aria-hidden.
+// Wide screens: a horizontal card pinned bottom-right, in the empty gutter
+// beside the text (from 1280 px the gutter is wide enough that it never covers
+// a word; measured: 1152 px overlapped the text by 32 px). Narrower: the slim bar along the bottom.
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { bus, serverState, type ModelState } from "./bus";
+import { bus, REAL_TIME, serverState, type ModelState } from "./bus";
 
 const LAYERS = 4;
 const NODES = 5;
@@ -24,11 +27,11 @@ function activations(token: string, step: number): boolean[][] {
 
 const show = (t: string) => t.trim();
 
-// Is the desktop layout active? The server (and hydration) assume yes, then the
+// Is the wide layout active? The server (and hydration) assume yes, then the
 // real answer takes over. Each panel only renders, and only subscribes to the
 // token stream, on the layout where it is visible: the hidden one used to
 // re-render 20 times a second for nothing.
-const DESKTOP = "(min-width: 1024px)";
+const DESKTOP = "(min-width: 1280px)"; // keep in sync with xl:hidden in Bar
 function useDesktop(): boolean {
   return useSyncExternalStore(
     (cb) => {
@@ -106,7 +109,7 @@ function Net({ m }: { m: ModelState }) {
       <text
         x={x(LAYERS - 1) + 12}
         y={H / 2 + 4}
-        className={`fill-console-text font-mono text-[11px] ${live && phase === LAYERS ? "opacity-100" : "opacity-0"}`}
+        className={`fill-console-text font-mono text-[15px] ${live && phase === LAYERS ? "opacity-100" : "opacity-0"}`}
       >
         {show(m.token).slice(0, 7)}
       </text>
@@ -119,7 +122,7 @@ function TopKBars({ m }: { m: ModelState }) {
   return (
     <ol className="space-y-1.5">
       {rows.map((r, i) => (
-        <li key={i} className="grid grid-cols-[6.5rem_1fr_2.5rem] items-center gap-2">
+        <li key={i} className="grid grid-cols-[5.5rem_1fr_2rem] items-center gap-2">
           <span className={`truncate ${i === 0 ? "text-console-text" : "text-console-muted"}`}>{show(r.token)}</span>
           <span className="h-1.5 bg-console-line">
             <span
@@ -143,7 +146,7 @@ const statusLine = (m: ModelState) =>
         ? `done · ${m.step} tokens`
         : `${m.tokPerSec} tok/s · step ${m.step} · T ${m.temperature}`;
 
-/** Desktop: sticky panel beside the text. */
+/** Wide screens: a horizontal card pinned to the bottom-right corner. */
 export function ModelPanel() {
   return useDesktop() ? <Panel /> : null;
 }
@@ -151,25 +154,73 @@ export function ModelPanel() {
 function Panel() {
   const m = useModel();
   return (
-    <div aria-hidden="true" className="rounded-sm bg-console p-4 font-mono text-[11px] leading-5 text-console-muted">
-      <div className="mb-3 flex justify-between">
+    <div className="fixed right-6 bottom-6 z-10 w-[26rem] rounded-sm bg-console p-3.5 font-mono text-[11px] leading-5 text-console-muted shadow-lg">
+      <div aria-hidden="true" className="mb-2 flex justify-between">
         <span className="text-console-text">mini-gpt</span>
         <span>4 layers · demo</span>
       </div>
-      <Net m={m} />
-      <div className="mt-3 border-t border-console-line pt-3">
-        <div className="mb-2">next token</div>
-        <TopKBars m={m} />
+      <div aria-hidden="true" className="grid grid-cols-[9.5rem_1fr] items-center gap-4">
+        <Net m={m} />
+        <div>
+          <div className="mb-1.5">next token</div>
+          <TopKBars m={m} />
+        </div>
       </div>
-      <div className="mt-3 border-t border-console-line pt-2 tabular-nums">{statusLine(m)}</div>
-      <p className="mt-3 text-console-muted">
+      <div aria-hidden="true" className="mt-2 border-t border-console-line pt-1.5 tabular-nums">
+        {statusLine(m)}
+      </div>
+      <SpeedSlider />
+      <p aria-hidden="true" className="mt-1 text-console-muted">
         Replaying pre-written text for now. A nanoGPT I&apos;m training will write this page for real.
       </p>
     </div>
   );
 }
 
-/** Phone: a slim bar pinned to the bottom, only while tokens are streaming. */
+// Speed slider, log scale: 0 → 1 tok/s (watch each word get picked, runner-up
+// first), 50 → ~14 tok/s, 100 → real time (~200 tok/s). Log because the slow end is where the
+// detail is; a linear slider would spend most of its length on "fast".
+const toSpeed = (v: number) => Math.round(REAL_TIME ** (v / 100));
+const toSlider = (s: number) => Math.round((Math.log(s) / Math.log(REAL_TIME)) * 100);
+
+function SpeedSlider({ compact = false }: { compact?: boolean }) {
+  const speed = useSyncExternalStore(
+    bus.subscribe,
+    () => bus.get().speed,
+    () => REAL_TIME,
+  );
+  const label = speed >= REAL_TIME ? "real time" : `${speed} tok/s`;
+  return (
+    <label
+      className={
+        compact
+          ? "flex flex-1 items-center gap-2 py-1"
+          : "mt-2 flex items-center gap-3 border-t border-console-line pt-2"
+      }
+    >
+      <span>speed</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={toSlider(speed)}
+        aria-valuetext={label}
+        onChange={(e) => {
+          const s = toSpeed(Number(e.target.value));
+          bus.set({ speed: s });
+          try {
+            localStorage.setItem("mini-gpt-speed", String(s));
+          } catch {}
+        }}
+        className="h-1 flex-1 cursor-pointer accent-signal"
+      />
+      <span className={`${compact ? "w-14" : "w-16"} text-right text-console-text tabular-nums`}>{label}</span>
+    </label>
+  );
+}
+
+/** Phone, tablet, small laptop: a slim bar pinned to the bottom, always shown,
+ *  because the speed slider lives here below 1280 px (the card has no room). */
 export function ModelBar() {
   return useDesktop() ? null : <Bar />;
 }
@@ -178,19 +229,15 @@ function Bar() {
   const m = useModel();
   const top = m.topk[0];
   return (
-    <div
-      aria-hidden="true"
-      className={`fixed inset-x-0 bottom-0 z-10 bg-console px-4 py-2 font-mono text-[11px] text-console-muted transition-opacity duration-500 lg:hidden ${
-        m.status === "generating" ? "opacity-100" : "pointer-events-none opacity-0"
-      }`}
-    >
+    <div className="fixed inset-x-0 bottom-0 z-10 bg-console px-4 py-1.5 font-mono text-[11px] text-console-muted xl:hidden">
       <div className="mx-auto flex max-w-xl items-center gap-3">
-        <span className="text-console-text">mini-gpt</span>
-        <span className="w-24 truncate text-console-text">{top ? show(top.token) : ""}</span>
-        <span className="h-1.5 flex-1 bg-console-line">
-          <span className="block h-full bg-signal" style={{ width: `${Math.round((top?.p ?? 0) * 100)}%` }} />
+        <span aria-hidden="true" className="text-console-text">
+          mini-gpt
         </span>
-        <span className="tabular-nums">{m.tokPerSec} tok/s</span>
+        <span aria-hidden="true" className="w-16 truncate text-console-text">
+          {m.status === "generating" && top ? show(top.token) : ""}
+        </span>
+        <SpeedSlider compact />
       </div>
     </div>
   );

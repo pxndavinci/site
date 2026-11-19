@@ -182,6 +182,41 @@ body {
   overflow-x: clip;
 }
 
+/* The sticky header would cover a section's first line after an anchor jump. */
+section[id] {
+  scroll-margin-top: 4.5rem;
+}
+
+/* Diffusion portrait (components/model/DiffusionPortrait.tsx). With motion on,
+   the finished <img> stays hidden while the canvas shows the denoising steps,
+   then fades in over it. Without .stream (switch off, no JS) it is just the image. */
+.portrait {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden; /* transparent: the cut-out portrait sits on the page itself */
+}
+.portrait canvas,
+.portrait img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.portrait canvas {
+  opacity: 0;
+}
+.portrait.running canvas {
+  opacity: 1;
+}
+.stream .portrait img {
+  opacity: 0;
+  transition: opacity 300ms;
+}
+.stream .portrait.done img {
+  opacity: 1;
+}
+
 ::selection {
   background: var(--color-signal-tint);
 }

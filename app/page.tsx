@@ -1,7 +1,9 @@
 // The homepage. A server component: it runs at build time and emits plain
 // HTML with every word in it. The only client JavaScript is the streamer and
 // the model panel (components/model).
+import { DiffusionPortrait } from "@/components/model/DiffusionPortrait";
 import { ModelBar, ModelPanel } from "@/components/model/ModelPanel";
+import { ModelSwitch } from "@/components/model/ModelSwitch";
 import { StreamController } from "@/components/model/StreamController";
 import { StreamText } from "@/components/model/StreamText";
 import { about, building, footer, hero, links, path, site } from "./content";
@@ -31,27 +33,38 @@ export default function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
       <StreamController />
 
-      <div className="mx-auto max-w-5xl px-5 sm:px-8 lg:grid lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-16">
+      {/* relative: the portrait is positioned against this box on wide screens. */}
+      <div className="relative mx-auto max-w-5xl px-5 sm:px-8">
         <main className="max-w-[40rem] pb-24">
-          <header className="flex justify-between py-8 font-mono text-xs text-ink-muted">
+          {/* Sticky, so the mini-gpt switch is always one tap away. */}
+          <header className="sticky top-0 z-10 -mx-5 flex items-center justify-between bg-paper px-5 py-5 font-mono text-xs text-ink-muted sm:mx-0 sm:px-0 sm:py-7">
             <span className="hidden sm:inline">abishek.joatverse.com</span>
-            <nav className="flex gap-4">
-              <a href="#about" className="hover:text-ink">
-                about
-              </a>
-              <a href="#path" className="hover:text-ink">
-                path
-              </a>
-              <a href="#building" className="hover:text-ink">
-                building
-              </a>
-              <a href="#contact" className="hover:text-ink">
-                contact
-              </a>
-            </nav>
+            <div className="flex items-center gap-3 sm:gap-5">
+              <nav className="flex gap-2.5 sm:gap-4">
+                <a href="#about" className="hover:text-ink">
+                  about
+                </a>
+                <a href="#path" className="hover:text-ink">
+                  path
+                </a>
+                <a href="#building" className="hover:text-ink">
+                  building
+                </a>
+                <a href="#contact" className="hover:text-ink">
+                  contact
+                </a>
+              </nav>
+              <ModelSwitch />
+            </div>
           </header>
 
-          <section id="hero" data-stream-section className="pt-10 pb-16 sm:pt-16">
+          <section id="hero" data-stream-section className="pt-6 pb-16 sm:pt-12">
+            {/* Phone: small, above the name. Wide screens: in the right-hand gutter, beside it. */}
+            <DiffusionPortrait
+              src="/portrait-v2.webp"
+              alt="Illustrated portrait of Abishek Nallathambi"
+              className="mb-6 w-40 lg:absolute lg:top-28 lg:right-8 lg:mb-0 lg:w-[280px]"
+            />
             <p className="mb-4 font-mono text-xs text-ink-muted">{hero.prompt}</p>
             <h1 className="text-5xl leading-[1.05] font-medium tracking-tight sm:text-6xl">{site.name}</h1>
             <StreamText as="p" text={hero.tagline} className="mt-6 text-xl leading-relaxed sm:text-2xl" />
@@ -164,13 +177,8 @@ export default function Home() {
             <StreamText as="p" text={footer.more} className="mt-6 font-mono text-xs" />
           </footer>
         </main>
-
-        <aside className="hidden lg:block">
-          <div className="sticky top-24 mt-24">
-            <ModelPanel />
-          </div>
-        </aside>
       </div>
+      <ModelPanel />
       <ModelBar />
     </>
   );

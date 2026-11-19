@@ -10,11 +10,12 @@
 //      a dotted underline, and hovering one shows the top-3 guesses.
 //   3. Progress goes to the bus, which drives the panel's forward-pass wave.
 //
-// Off switch: the inline script in layout.tsx adds the "stream" class to <html>
-// only when JS runs and the visitor hasn't asked for reduced motion. Without
-// that class every token is visible and this component does nothing.
-import { useEffect } from "react";
-import { bus } from "./bus";
+// On/off: the "stream" class on <html> is the truth. The inline script in
+// layout.tsx sets it before first paint; the top-bar switch (ModelSwitch) flips
+// it and bus.enabled, and this effect re-runs on that change. Without the class
+// every token is visible and this component does nothing.
+import { useEffect, useSyncExternalStore } from "react";
+import { bus, REAL_TIME } from "./bus";
 import { cannedSource, type TokenSource, type TopK } from "./source";
 
 const MS_PER_TOKEN = 10; // ~100 tokens/s on screen; MAX_MS still caps long sections at 0.9 s
@@ -25,13 +26,31 @@ const DOUBT_BELOW = 0.45; // a word the model was this unsure of keeps its under
 const show = (t: string) => (t.startsWith(" ") ? t.slice(1) : t);
 
 export function StreamController({ source = cannedSource }: { source?: TokenSource }) {
+  const enabled = useSyncExternalStore(
+    bus.subscribe,
+    () => bus.get().enabled,
+    () => true,
+  );
   useEffect(() => {
     const html = document.documentElement;
+    (window as unknown as { __streamReady: boolean }).__streamReady = true;
+    try {
+      const saved = Number(localStorage.getItem("mini-gpt-speed"));
+      if (saved > 0) bus.set({ speed: saved });
+    } catch {}
     if (!html.classList.contains("stream")) {
-      bus.set({ status: "static" });
+      bus.set({ enabled: false, status: "static" });
       return;
     }
-    (window as unknown as { __streamReady: boolean }).__streamReady = true;
+
+    // Switched back on after being off: hide every token again and start over.
+    // Sections already scrolled past re-stream when they come back into view.
+    document.querySelectorAll<HTMLElement>(".t.on").forEach((s) => {
+      s.classList.remove("on", "doubt");
+      s.style.removeProperty("--settle");
+    });
+    document.querySelectorAll(".live").forEach((s) => s.classList.remove("live"));
+    bus.set({ status: "waiting", step: 0, token: "", topk: [] });
 
     // One blinking caret, placed once at the end of a finished section. While a
     // section streams, the ghost marks the writing edge instead: moving an
@@ -73,7 +92,8 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
     };
     document.addEventListener("mouseover", onOver);
     document.addEventListener("mouseout", onOut);
-    window.addEventListener("scroll", () => tip.classList.remove("open"), { passive: true });
+    const onScroll = () => tip.classList.remove("open");
+    window.addEventListener("scroll", onScroll, { passive: true });
 
     let running = 0;
     let cancelled = false;
@@ -83,8 +103,12 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
       const tokens = spans.map((s) => s.textContent ?? "");
       const topk = await source.topk(section.id, tokens);
       const temperature = Number(section.dataset.temp ?? 0.7);
-      const duration = Math.min(MAX_MS, Math.max(MIN_MS, tokens.length * MS_PER_TOKEN));
-      const start = performance.now();
+      // Real time: the whole section in 0.3–0.9 s. Slower: the slider's tokens/s,
+      // read every frame, so moving the slider changes a section mid-stream.
+      const realRate = tokens.length / (Math.min(MAX_MS, Math.max(MIN_MS, tokens.length * MS_PER_TOKEN)) / 1000);
+      const rate = () => (bus.get().speed >= REAL_TIME ? realRate : bus.get().speed);
+      let prev = performance.now();
+      let owed = 0; // tokens due so far, fractional
       let shown = 0;
       let lastEmit = 0;
       let pending = 0; // tokens landed since the last panel update
@@ -114,7 +138,9 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
 
       const frame = (now: number) => {
         if (cancelled) return;
-        const target = Math.min(tokens.length, Math.ceil(((now - start) / duration) * tokens.length));
+        owed += (Math.max(0, now - prev) / 1000) * rate();
+        prev = now;
+        const target = Math.min(tokens.length, Math.ceil(owed));
         pending += Math.max(0, target - shown);
         for (; shown < target; shown++) land(shown);
 
@@ -141,7 +167,7 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
             step: bus.get().step + landed, // sections can stream in parallel; count all
             token: tokens[shown - 1] ?? "",
             topk: topk[shown - 1] ?? [],
-            tokPerSec: Math.round((shown / Math.max(1, now - start)) * 1000),
+            tokPerSec: Math.round(rate()),
             temperature,
           });
         }
@@ -167,11 +193,14 @@ export function StreamController({ source = cannedSource }: { source?: TokenSour
     return () => {
       cancelled = true;
       io.disconnect();
+      ghost.remove();
+      caret.remove();
       document.removeEventListener("mouseover", onOver);
       document.removeEventListener("mouseout", onOut);
+      window.removeEventListener("scroll", onScroll);
       tip.remove();
     };
-  }, [source]);
+  }, [source, enabled]);
 
   return null;
 }

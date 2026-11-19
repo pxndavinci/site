@@ -39,10 +39,13 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#f8f5ef" };
 
-// Runs before first paint. Turns the streaming effect on only when JS works and
-// the visitor hasn't asked for less motion. Failsafe: if the app hasn't started
-// within 4 s (a script error, say), drop the class so the text never stays hidden.
-const streamGate = `try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches){var d=document.documentElement;d.classList.add('stream');setTimeout(function(){if(!window.__streamReady)d.classList.remove('stream')},4000)}}catch(e){}`;
+// Runs before first paint, so the page never flashes the wrong mode. Decides
+// whether the mini-gpt animation starts on: the visitor's own choice from the
+// top-bar switch wins (saved in localStorage); otherwise it is on unless they
+// asked the OS for less motion or the browser for data saving. Failsafe: if the
+// app hasn't started within 4 s (a script error, say), drop the class so the
+// text never stays hidden.
+const streamGate = `try{var d=document.documentElement,p=null,c=navigator.connection;try{p=localStorage.getItem('mini-gpt')}catch(e){}var on=p?p==='on':!(matchMedia('(prefers-reduced-motion: reduce)').matches||(c&&c.saveData));if(on){d.classList.add('stream');setTimeout(function(){if(!window.__streamReady)d.classList.remove('stream')},4000)}}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

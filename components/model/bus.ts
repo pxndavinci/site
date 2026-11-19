@@ -10,7 +10,16 @@ export type ModelState = {
   topk: TopK[];
   tokPerSec: number;
   temperature: number;
+  enabled: boolean; // the top-bar switch: false = full text and final image, no motion
+  speed: number; // tokens/s from the panel slider; REAL_TIME = top stop
 };
+
+// The slider's top stop, "real time": the fastest the page can be written.
+// Today (replay) that is the natural pace, each section in 0.3–0.9 s, so long
+// sections reach ~200 tok/s. Once the nanoGPT runs in the visitor's browser,
+// real time = whatever their device actually generates (no artificial cap).
+// Below the top stop, the page streams at exactly the slider's rate.
+export const REAL_TIME = 200;
 
 let state: ModelState = {
   status: "waiting",
@@ -19,6 +28,8 @@ let state: ModelState = {
   topk: [],
   tokPerSec: 0,
   temperature: 0.7,
+  enabled: true,
+  speed: REAL_TIME,
 };
 const listeners = new Set<() => void>();
 
